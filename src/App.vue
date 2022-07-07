@@ -1,15 +1,27 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+
+  <v-md-editor v-model="article.text" height="400px"></v-md-editor>
+
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
 
+
+
+import { reactive } from 'vue'
 export default {
   name: 'App',
+
   components: {
-    HelloWorld
+
+  },
+  setup(){
+    const article = reactive({
+      text:''
+    })
+    return {
+      article
+    }
   }
 }
 </script>
