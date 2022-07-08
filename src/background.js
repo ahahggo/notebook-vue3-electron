@@ -1,9 +1,11 @@
 'use strict'
-
-import { app, protocol, BrowserWindow } from 'electron'
+import { app, protocol, BrowserWindow ,ipcMain} from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
-import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
+let fs = require('fs');
+//import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
+
+
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
@@ -13,27 +15,35 @@ protocol.registerSchemesAsPrivileged([
 async function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-      
-      // Use pluginOptions.nodeIntegration, leave this alone
-      // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
-      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
-      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
-    }
+    width: 1920,
+    height: 1024,
+    webPreferences:{
+            nodeIntegration: true,  //完全使用nodeapi
+            contextIsolation:false,  //由于新版electron把这个默认属性改为true 官给出解释大概意思是保证渲染进程太容易访问主进程要保证安主进程全性隔离
+          }
   })
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
     await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
-    //if (!process.env.IS_TEST) win.webContents.openDevTools()
+    if (!process.env.IS_TEST) win.webContents.openDevTools()
   } else {
     createProtocol('app')
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
+
   }
 }
+
+
+
+ipcMain.on('123',function (event, arg){
+  console.log("receive")
+  console.log(arg)
+  let fd = fs.openSync(arg.title+'.md','w');
+  fs.writeSync(fd,arg.content);
+  fs.closeSync(fd);
+})
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -79,3 +89,4 @@ if (isDevelopment) {
     })
   }
 }
+
