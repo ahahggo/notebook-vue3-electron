@@ -1,6 +1,7 @@
 'use strict'
 import { app, protocol, BrowserWindow ,ipcMain} from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
+import * as electron from "electron";
 let fs = require('fs');
 //import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -14,9 +15,11 @@ protocol.registerSchemesAsPrivileged([
 
 async function createWindow() {
   // Create the browser window.
+  electron.Menu.setApplicationMenu(null)
   const win = new BrowserWindow({
     width: 1920,
     height: 1024,
+    minWidth: 1200,
     webPreferences:{
             nodeIntegration: true,  //完全使用nodeapi
             contextIsolation:false,  //由于新版electron把这个默认属性改为true 官给出解释大概意思是保证渲染进程太容易访问主进程要保证安主进程全性隔离
@@ -40,7 +43,7 @@ async function createWindow() {
 ipcMain.on('123',function (event, arg){
   console.log("receive")
   console.log(arg)
-  let fd = fs.openSync(arg.title+'.md','w');
+  let fd = fs.openSync('./data/'+arg.title+'.md','w');
   fs.writeSync(fd,arg.content);
   fs.closeSync(fd);
 })

@@ -5,8 +5,9 @@ import '@kangc/v-md-editor/lib/style/base-editor.css';
 import vuepressTheme from '@kangc/v-md-editor/lib/theme/vuepress.js';
 import '@kangc/v-md-editor/lib/theme/style/vuepress.css';
 import Prism from 'prismjs';
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
+import 'ant-design-vue/dist/antd.css'
+import Antd from 'ant-design-vue/es'
+
 
 // 数据库
 
@@ -16,6 +17,6 @@ VueMarkdownEditor.use(vuepressTheme, {
 
 const app = createApp(App)
 app.use(VueMarkdownEditor);
-app.use(ElementPlus)
 
+app.use(Antd)
 app.mount('#app')
