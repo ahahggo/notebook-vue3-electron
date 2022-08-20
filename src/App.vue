@@ -15,40 +15,35 @@
     <a-layout style="min-height: 100vh" >
       <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light">
         <div class="logo" />
-        <a-menu v-model:selectedKeys="selectedKeys" theme="light" mode="inline">
-          <a-menu-item key="1">
-            <pie-chart-outlined />
-            <span>Option 1</span>
-          </a-menu-item>
-          <a-menu-item key="2">
-            <desktop-outlined />
-            <span>Option 2</span>
-          </a-menu-item>
-          <a-sub-menu key="sub1">
+        <a-menu
+            :selectedKeys="selectedKeys"
+            @openChange="getLocalFile"
+            @click="menuClick"
+            theme="light"
+            mode="inline">
+
+          <a-sub-menu key="file">
             <template #title>
             <span>
-              <user-outlined />
-              <span>User</span>
+              <file-outlined />
+              <span>文件</span>
             </span>
             </template>
-            <a-menu-item key="3">Tom</a-menu-item>
-            <a-menu-item key="4">Bill</a-menu-item>
-            <a-menu-item key="5">Alex</a-menu-item>
-          </a-sub-menu>
-          <a-sub-menu key="sub2">
-            <template #title>
-            <span>
-              <team-outlined />
-              <span>Team</span>
-            </span>
+
+            <template v-for="file in fileList" :key="file.key">
+              <template v-if="!file.children">
+                <a-menu-item :key="file.key">
+                  <span>{{file.name}}</span>
+                </a-menu-item>
+              </template>
+
+              <template v-else>
+                <sub-menu :key="file.key" :menu-info="file"/>
+              </template>
+
             </template>
-            <a-menu-item key="6">Team 1</a-menu-item>
-            <a-menu-item key="8">Team 2</a-menu-item>
+
           </a-sub-menu>
-          <a-menu-item key="9">
-            <file-outlined />
-            <span>File</span>
-          </a-menu-item>
         </a-menu>
       </a-layout-sider>
       <a-layout >
@@ -74,21 +69,52 @@
 
 import {reactive, ref} from 'vue'
 
-import {readFiles} from "./readFile.js";
-import { PieChartOutlined, DesktopOutlined, UserOutlined, TeamOutlined, FileOutlined } from '@ant-design/icons-vue';
+import {localFile, readFiles,showFile} from "./readFile.js";
+import { FileOutlined ,FolderOutlined} from '@ant-design/icons-vue';
+
+
+const SubMenu={
+  template:`
+    <a-sub-menu :key="menuInfo.key">
+      <template #icon><folder-outlined /></template>
+      <template #title>{{menuInfo.name}}</template>
+      <template v-for="item in menuInfo.children">
+        <a-menu-item v-if="!item.children" :key="item.key">
+          <span>{{ item.name }}</span>
+        </a-menu-item>
+        <sub-menu v-else :key="item.key+'1'" :menu-info="item" />
+      </template>
+    </a-sub-menu>
+  `,
+  name:'SubMenu',
+  isSubMenu:true,
+  props:{
+    menuInfo:{
+      type:Object,
+      default:()=>({})
+    }
+  },
+  components:{
+    FolderOutlined,
+  }
+
+}
 
 export default {
   name: 'App',
 
   components: {
-    PieChartOutlined,
-    DesktopOutlined,
-    UserOutlined,
-    TeamOutlined,
+    'sub-menu':SubMenu,
+
+    //PieChartOutlined,
+    //DesktopOutlined,
+    //UserOutlined,
+    //TeamOutlined,
     FileOutlined,
   },
   setup(){
     const formRef=ref();
+    let fileList=ref()
     function submit(){
       visible.value = true;
     }
@@ -96,20 +122,38 @@ export default {
       formRef.value.validateFields().then(values => {
         console.log("value: ",values)
         visible.value = false;
-        formRef.value.resetFields();
         readFiles(formState.filename,article.text)
+        formRef.value.resetFields();
+
         console.log({
-          title:'提交成功',
+          title:formState.filename,
           message: article.text,
           type: height.now
         })
       }).catch(info=>{
         console.log('failed:',info)
       })
-
-
     }
 
+    function getLocalFile(){
+      localFile("./data").then(function (r) {
+        fileList.value=r
+      })
+    }
+    function menuClick(arg){
+      let f=0
+      for(let i=1 ;i<arg.keyPath.length;i+=1){
+        if (f.children===undefined){
+          f=fileList.value[arg.keyPath[i]]
+        }
+        else{
+          f=f.children[arg.keyPath[i]]
+        }
+      }
+      showFile(f.path).then(function(r){
+        article.text=r
+      })
+    }
     const article = reactive({
       text:''
     })
@@ -123,6 +167,7 @@ export default {
 
 
 
+
     return {
       article,
       submit,
@@ -132,7 +177,10 @@ export default {
       visible,
       confirmSubmit,
       formState,
-      formRef
+      formRef,
+      getLocalFile,
+      menuClick,
+      fileList
     }
   }
 }

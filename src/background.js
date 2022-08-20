@@ -2,6 +2,8 @@
 import { app, protocol, BrowserWindow ,ipcMain} from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import * as electron from "electron";
+
+
 let fs = require('fs');
 //import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -36,17 +38,61 @@ async function createWindow() {
     win.loadURL('app://./index.html')
 
   }
+  ipcMain.on("local",async function (event, args){
+    async function readContent(path) {
+      let k = 0
+      let filename=[]
+      let dir = await fs.promises.opendir(path);
+      for await (let dirent of dir) {
+        if (dirent.isDirectory()){
+          filename.push({
+            key:k,
+            name:dirent.name,
+            path:path+"/"+dirent.name,
+            children:await readContent(path+"/"+dirent.name)
+          })
+        }
+        else{
+          filename.push({
+            key:k,
+            name:dirent.name,
+            path:path+"/"+dirent.name,
+            children:null
+          })
+        }
+        k+=1
+      }
+      return filename
+    }
+    let all=await readContent(args)
+    win.webContents.send("file",all) //
+  })
+
+  ipcMain.on("show",function(event, args){
+    fs.readFile(args,(err,data)=>{
+      if (err){
+        console.log("读取失败")
+      }
+      else{
+        data=data.toString()
+        console.log(data)
+        win.webContents.send("sendfile",data)
+      }
+    })
+  })
 }
 
 
 
-ipcMain.on('123',function (event, arg){
+ipcMain.on('saveFile',function (event, arg){
   console.log("receive")
   console.log(arg)
   let fd = fs.openSync('./data/'+arg.title+'.md','w');
   fs.writeSync(fd,arg.content);
   fs.closeSync(fd);
 })
+
+
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
