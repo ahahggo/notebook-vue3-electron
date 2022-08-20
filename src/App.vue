@@ -1,5 +1,5 @@
 <template>
-  <div id="app" >
+  <div id="app" @click="ifClick">
     <a-modal v-model:visible="visible" title="Basic Modal" @ok="confirmSubmit">
       <a-form :model="formState" ref="formRef">
         <a-form-item
@@ -11,7 +11,6 @@
         </a-form-item>
       </a-form>
     </a-modal>
-
     <a-layout style="min-height: 100vh" >
       <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light">
         <div class="logo" />
@@ -32,15 +31,13 @@
 
             <template v-for="file in fileList" :key="file.key">
               <template v-if="!file.children">
-                <a-menu-item :key="file.key">
-                  <span>{{file.name}}</span>
-                </a-menu-item>
+                  <a-menu-item :key="file.key" @contextmenu.prevent="rightClick(file.path,$event)">
+                    <span>{{file.name}}</span>
+                  </a-menu-item>
               </template>
-
               <template v-else>
-                <sub-menu :key="file.key" :menu-info="file"/>
+                <sub-menu :key="file.key" :menu-info="file" @contextmenu.prevent="rightClick(file.path,$event)"/>
               </template>
-
             </template>
 
           </a-sub-menu>
@@ -61,6 +58,37 @@
         </a-layout-footer>
       </a-layout>
     </a-layout>
+    <transition name="menu">
+      <div :style="menuStyle" v-show="menuVisible">
+        <a-row style="min-width: 60px;margin: 5px">
+          <a-button shape="normal" block style="border-color: white">
+            <template #icon><file-add-outlined /></template>
+            <span style="text-align: right">新建文件</span>
+          </a-button>
+        </a-row>
+        <a-row style="min-width: 60px;margin: 5px">
+          <a-button shape="normal" block style="border-color: white">
+            <template #icon><folder-add-outlined /></template>
+            <span style="text-align: right">新建文件夹</span>
+          </a-button>
+        </a-row>
+        <a-row style="min-width: 60px;margin: 5px">
+          <a-button shape="normal" block style="border-color: white">
+            <template #icon><edit-outlined /></template>
+            <span style="text-align: right">重命名</span>
+          </a-button>
+        </a-row>
+        <a-row style="min-width: 60px;margin: 5px">
+          <a-button shape="normal" block style="border-color: white">
+            <template #icon><delete-outlined /></template>
+            <span style="text-align: right">删除</span>
+          </a-button>
+        </a-row>
+      </div>
+    </transition>
+
+
+
   </div>
 </template>
 
@@ -70,7 +98,7 @@
 import {reactive, ref} from 'vue'
 
 import {localFile, readFiles,showFile} from "./readFile.js";
-import { FileOutlined ,FolderOutlined} from '@ant-design/icons-vue';
+import { FileOutlined ,FolderOutlined,FileAddOutlined,FolderAddOutlined,DeleteOutlined,EditOutlined} from '@ant-design/icons-vue';
 
 
 const SubMenu={
@@ -79,10 +107,10 @@ const SubMenu={
       <template #icon><folder-outlined /></template>
       <template #title>{{menuInfo.name}}</template>
       <template v-for="item in menuInfo.children">
-        <a-menu-item v-if="!item.children" :key="item.key">
+        <a-menu-item v-if="!item.children" :key="item.key" @contextmenu.prevent="rightClick(item.path)">
           <span>{{ item.name }}</span>
         </a-menu-item>
-        <sub-menu v-else :key="item.key+'1'" :menu-info="item" />
+        <sub-menu v-else :key="item.key+'1'" :menu-info="item" @contextmenu.prevent="rightClick(item.path)"/>
       </template>
     </a-sub-menu>
   `,
@@ -96,6 +124,14 @@ const SubMenu={
   },
   components:{
     FolderOutlined,
+  },
+  setup(){
+    function rightClick(filePath){
+      console.log("右键",filePath)
+    }
+    return{
+      rightClick
+    }
   }
 
 }
@@ -111,6 +147,10 @@ export default {
     //UserOutlined,
     //TeamOutlined,
     FileOutlined,
+    FileAddOutlined,
+    FolderAddOutlined,
+    DeleteOutlined,
+    EditOutlined
   },
   setup(){
     const formRef=ref();
@@ -134,7 +174,9 @@ export default {
         console.log('failed:',info)
       })
     }
-
+    function ifClick(){
+      menuVisible.value=false
+    }
     function getLocalFile(){
       localFile("./data").then(function (r) {
         fileList.value=r
@@ -154,6 +196,12 @@ export default {
         article.text=r
       })
     }
+    function rightClick(filePath,e){
+      menuStyle.left=e.screenX+"px"
+      menuStyle.top=e.screenY+"px"
+      menuVisible.value=true
+      console.log("右键",filePath,e)
+    }
     const article = reactive({
       text:''
     })
@@ -164,6 +212,18 @@ export default {
     const formState=reactive({
       filename:'未命名文件'
     })
+    let menuStyle=reactive({
+      position: "absolute",
+      top:"0",
+      left:"0",
+
+      width:"150px",
+      height:"155px",
+      "background-color":"rgba(255,255,255,0.8)",
+      "border-radius":"6px",
+      "box-shadow":"2px 2px 5px 2px rgba(0,0,0,0.2)"
+    })
+    let menuVisible=ref(false)
 
 
 
@@ -180,7 +240,11 @@ export default {
       formRef,
       getLocalFile,
       menuClick,
-      fileList
+      rightClick,
+      fileList,
+      menuStyle,
+      menuVisible,
+      ifClick
     }
   }
 }
@@ -200,12 +264,40 @@ export default {
   min-width: 400px;
   float: left;
 }
+.menu-style {
+  background-color: #c2c1c1;
+}
+.menu-enter-active {
+  animation: fade-in-right 0.2s cubic-bezier(0.390, 0.575, 0.565, 1.000) both;
+}
+.menu-leave-active{
+  animation:scale-out-center 0.2s cubic-bezier(0.550, 0.085, 0.680, 0.530) both;
+}
  #components-layout-demo-side .logo {
    height: 32px;
    margin: 16px;
    background: rgba(255, 255, 255, 0.3);
  }
-
+@keyframes fade-in-right {
+  0% {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes scale-out-center {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 1;
+  }
+}
 .site-layout .site-layout-background {
   background: #fff;
 }
