@@ -39,8 +39,9 @@ async function createWindow() {
 
   }
   ipcMain.on("local",async function (event, args){
+    let k = 0
     async function readContent(path) {
-      let k = 0
+
       let filename=[]
       let dir = await fs.promises.opendir(path);
       for await (let dirent of dir) {
@@ -64,7 +65,7 @@ async function createWindow() {
       }
       return filename
     }
-    let all=await readContent(args)
+    let all=await readContent(args).catch(reason => {console.log(reason)})
     win.webContents.send("file",all) //
   })
 
@@ -87,9 +88,45 @@ async function createWindow() {
 ipcMain.on('saveFile',function (event, arg){
   console.log("receive")
   console.log(arg)
-  let fd = fs.openSync('./data/'+arg.title+'.md','w');
+  let fd = fs.openSync(arg.title+'.md','w');
   fs.writeSync(fd,arg.content);
   fs.closeSync(fd);
+})
+
+ipcMain.on('addFolder',function (event, arg){
+  console.log("receive")
+  console.log(arg)
+  fs.mkdir(arg,(err)=>{
+    if (err){
+      console.log(err)
+    }
+  })
+})
+
+ipcMain.on('delFile',function (event, arg){
+  const path=require('path')
+  function rmdir(dir,cb){
+    fs.stat(dir,function (err,stateObj){
+      if(stateObj.isDirectory()){
+        fs.readdir(dir,function (err,dirs){
+          dirs=dirs.map(item=>path.join(dir,item))
+          let index = 0
+          function step(){
+            if(index===dirs.length){
+              return fs.rmdir(dir,cb)
+            }
+            rmdir(dirs[index++],step)
+          }
+          step()
+        })
+      } else{
+        fs.unlink(dir,cb)
+      }
+    })
+  }
+  rmdir(arg,function (){
+    console.log("delete finish")
+  })
 })
 
 

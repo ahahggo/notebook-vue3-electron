@@ -8,6 +8,16 @@ export function readFiles(title,content){
     ipcRenderer.send('saveFile',a)
 }
 
+export function addFolders(title){
+    console.log("run function")
+    ipcRenderer.send('addFolder',title)
+}
+
+export function delFiles(title){
+
+    ipcRenderer.send('delFile',title)
+}
+
 export function localFile(filepath){
     return new Promise(function (resolve){
         ipcRenderer.send("local",filepath)

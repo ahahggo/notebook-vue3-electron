@@ -1,19 +1,11 @@
 <template>
-  <div id="app" @click="ifClick">
-    <a-modal v-model:visible="visible" title="Basic Modal" @ok="confirmSubmit">
-      <a-form :model="formState" ref="formRef">
-        <a-form-item
-            name="filename"
-            label="文件名"
-            :rules="[{required: true,message:'请输入文件名'}]"
-        >
-          <a-input v-model:value="formState.filename" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+  <div id="app" @click="ifLeftClick">
     <a-layout style="min-height: 100vh" >
+
+<!--      侧边栏-->
       <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light">
         <div class="logo" />
+<!--        全部目录-->
         <a-menu
             :selectedKeys="selectedKeys"
             @openChange="getLocalFile"
@@ -21,7 +13,9 @@
             theme="light"
             mode="inline">
 
+<!--          文件目录-->
           <a-sub-menu key="file">
+
             <template #title>
             <span>
               <file-outlined />
@@ -29,12 +23,15 @@
             </span>
             </template>
 
+<!--            全部文件-->
             <template v-for="file in fileList" :key="file.key">
               <template v-if="!file.children">
                   <a-menu-item :key="file.key" @contextmenu.prevent="rightClick(file.path,$event)">
                     <span>{{file.name}}</span>
                   </a-menu-item>
               </template>
+
+<!--              递归搜索文件夹-->
               <template v-else>
                 <sub-menu :key="file.key" :menu-info="file" @contextmenu.prevent="rightClick(file.path,$event)"/>
               </template>
@@ -43,8 +40,9 @@
           </a-sub-menu>
         </a-menu>
       </a-layout-sider>
+
+<!--      编辑器栏-->
       <a-layout >
-<!--        <a-layout-header style="background: #fff; padding: 0" />-->
         <a-layout-content style="margin: 0 16px" >
           <v-md-editor v-model="article.text"
                        :height="height.now"
@@ -53,21 +51,21 @@
                        @save="submit()"
           ></v-md-editor>
         </a-layout-content>
-        <a-layout-footer style="text-align: center">
-          Ant Design ©2018 Created by Ant UED
-        </a-layout-footer>
       </a-layout>
+
     </a-layout>
+
+<!--    右键菜单-->
     <transition name="menu">
       <div :style="menuStyle" v-show="menuVisible">
         <a-row style="min-width: 60px;margin: 5px">
-          <a-button shape="normal" block style="border-color: white">
+          <a-button shape="normal" block style="border-color: white" @click="addFile">
             <template #icon><file-add-outlined /></template>
             <span style="text-align: right">新建文件</span>
           </a-button>
         </a-row>
         <a-row style="min-width: 60px;margin: 5px">
-          <a-button shape="normal" block style="border-color: white">
+          <a-button shape="normal" block style="border-color: white" @click="addFolder">
             <template #icon><folder-add-outlined /></template>
             <span style="text-align: right">新建文件夹</span>
           </a-button>
@@ -79,7 +77,7 @@
           </a-button>
         </a-row>
         <a-row style="min-width: 60px;margin: 5px">
-          <a-button shape="normal" block style="border-color: white">
+          <a-button shape="normal" block style="border-color: white" @click="delFile">
             <template #icon><delete-outlined /></template>
             <span style="text-align: right">删除</span>
           </a-button>
@@ -88,7 +86,50 @@
     </transition>
 
 
+<!--  对话框-->
+<!--      储存确认对话框-->
+    <a-modal v-model:visible="saveConfirmVisible" title="Basic Modal" @ok="confirmSubmit">
+      <a-form :model="formState" ref="saveConfirmFormRef">
+        <a-form-item
+            name="filename"
+            label="文件名"
+            :rules="[{required: true,message:'请输入文件名'}]"
+        >
+          <a-input v-model:value="formState.filename" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
+<!--      新建文件确认对话框-->
+    <a-modal v-model:visible="addFileConfirmVisible" title="Basic Modal" @ok="addFileConfirm">
+      <a-form :model="formState" ref="saveConfirmFormRef">
+        <a-form-item
+            name="filename"
+            label="文件名"
+            :rules="[{required: true,message:'请输入文件名'}]"
+        >
+          <a-input v-model:value="formState.filename" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+<!--      删除确认对话框-->
+    <a-modal v-model:visible="delConfirmVisible" title="Basic Modal" @ok="delConfirm">
+      <p>确认删除吗？</p>
+    </a-modal>
+
+    <!--      新建文件夹确认对话框-->
+    <a-modal v-model:visible="addFolderConfirmVisible" title="Basic Modal" @ok="addFolderConfirm">
+      <a-form :model="addFolderFormState" ref="addFolderConfirmFormRef">
+        <a-form-item
+            name="folderName"
+            label="文件夹名"
+            :rules="[{required: true,message:'请输入文件夹名'}]"
+        >
+          <a-input v-model:value="addFolderFormState.folderName" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -96,11 +137,8 @@
 
 
 import {reactive, ref} from 'vue'
-
-import {localFile, readFiles,showFile} from "./readFile.js";
+import {localFile, readFiles,showFile,delFiles,addFolders} from "./readFile.js";
 import { FileOutlined ,FolderOutlined,FileAddOutlined,FolderAddOutlined,DeleteOutlined,EditOutlined} from '@ant-design/icons-vue';
-
-
 const SubMenu={
   template:`
     <a-sub-menu :key="menuInfo.key">
@@ -133,37 +171,34 @@ const SubMenu={
       rightClick
     }
   }
-
 }
+
 
 export default {
   name: 'App',
-
   components: {
     'sub-menu':SubMenu,
-
-    //PieChartOutlined,
-    //DesktopOutlined,
-    //UserOutlined,
-    //TeamOutlined,
     FileOutlined,
     FileAddOutlined,
     FolderAddOutlined,
     DeleteOutlined,
     EditOutlined
   },
+
   setup(){
-    const formRef=ref();
+    const selectedKeys=ref([])
+    const saveConfirmFormRef=ref();
+    const addFolderConfirmFormRef=ref();
     let fileList=ref()
     function submit(){
-      visible.value = true;
+      saveConfirmVisible.value = true;
     }
     function confirmSubmit(){
-      formRef.value.validateFields().then(values => {
+      saveConfirmFormRef.value.validateFields().then(values => {
         console.log("value: ",values)
-        visible.value = false;
-        readFiles(formState.filename,article.text)
-        formRef.value.resetFields();
+        saveConfirmVisible.value = false;
+        readFiles('./data/'+formState.filename,article.text)
+        saveConfirmFormRef.value.resetFields();
 
         console.log({
           title:formState.filename,
@@ -174,12 +209,13 @@ export default {
         console.log('failed:',info)
       })
     }
-    function ifClick(){
+    function ifLeftClick(){
       menuVisible.value=false
     }
     function getLocalFile(){
       localFile("./data").then(function (r) {
         fileList.value=r
+        console.log(r)
       })
     }
     function menuClick(arg){
@@ -193,13 +229,16 @@ export default {
         }
       }
       showFile(f.path).then(function(r){
+        shownFile.value=f.path
         article.text=r
+        selectedKeys.value=[arg.key]
       })
     }
     function rightClick(filePath,e){
-      menuStyle.left=e.screenX+"px"
-      menuStyle.top=e.screenY+"px"
+      menuStyle.left=e.pageX+"px"
+      menuStyle.top=e.pageY+"px"
       menuVisible.value=true
+      selectedFile.value=filePath
       console.log("右键",filePath,e)
     }
     const article = reactive({
@@ -208,10 +247,74 @@ export default {
     let height=reactive({
       now:document.documentElement.clientHeight+'px'
     })
-    const visible = ref(false);
+    const saveConfirmVisible = ref(false);
+    const addFileConfirmVisible = ref(false);
+    const addFolderConfirmVisible = ref(false);
+    const delConfirmVisible = ref(false);
+    const renameConfirmVisible = ref(false);
+    function addFile() {
+      addFileConfirmVisible.value=true
+    }
+    function addFileConfirm(){
+      saveConfirmFormRef.value.validateFields().then(values => {
+        console.log("value: ",values)
+        addFileConfirmVisible.value = false;
+        let content=selectedFile.value
+        for (let i=content.length-1;i>=0;i-=1){
+          if(content[i]==='/'){
+            content=content.slice(0,i)
+            break
+          }
+        }
+        readFiles(content+'/'+formState.filename,"")
+        saveConfirmFormRef.value.resetFields();
+        console.log({
+          title:formState.filename,
+          message: "",
+          type: height.now
+        })
+        getLocalFile()
+      }).catch(info=>{
+        console.log('failed:',info)
+      })
+    }
+    function delFile(){
+      delConfirmVisible.value=true
+    }
+    function delConfirm() {
+      delConfirmVisible.value=false
+      delFiles(selectedFile.value)
+      setTimeout(getLocalFile,20)
+    }
+    function addFolder(){
+      addFolderConfirmVisible.value=true
+    }
+    function addFolderConfirm() {
+      addFolderConfirmFormRef.value.validateFields().then(values => {
+        console.log("value: ",values)
+        addFolderConfirmVisible.value=false
+        let content=selectedFile.value
+        for (let i=content.length-1;i>=0;i-=1){
+          if(content[i]==='/'){
+            content=content.slice(0,i)
+            break
+          }
+        }
+        addFolders(content+'/'+addFolderFormState.folderName)
+        addFolderConfirmFormRef.value.resetFields();
+        getLocalFile()
+      }).catch(info=>{
+        console.log('failed:',info)
+      })
+    }
     const formState=reactive({
       filename:'未命名文件'
     })
+    const addFolderFormState=reactive({
+      folderName:'未命名文件夹'
+    })
+    let selectedFile=ref("")
+    let shownFile=ref("")
     let menuStyle=reactive({
       position: "absolute",
       top:"0",
@@ -232,19 +335,33 @@ export default {
       article,
       submit,
       collapsed: ref(false),
-      selectedKeys: ref(['1']),
+      selectedKeys,
       height,
-      visible,
+      saveConfirmVisible,
+      addFolderConfirmVisible,
+      addFileConfirmVisible,
+      delConfirmVisible,
+      renameConfirmVisible,
       confirmSubmit,
       formState,
-      formRef,
+      saveConfirmFormRef,
       getLocalFile,
       menuClick,
       rightClick,
       fileList,
       menuStyle,
       menuVisible,
-      ifClick
+      ifLeftClick,
+      addFile,
+      selectedFile,
+      shownFile,
+      addFileConfirm,
+      delFile,
+      delConfirm,
+      addFolder,
+      addFolderConfirm,
+      addFolderConfirmFormRef,
+      addFolderFormState,
     }
   }
 }
