@@ -1,9 +1,9 @@
 <template>
   <div id="app" @click="ifLeftClick">
-    <a-layout style="min-height: 100vh" >
+    <a-layout style="min-height: 100vh" has-sider>
 
 <!--      侧边栏-->
-      <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light">
+      <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light" :style="{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0 }">
         <div class="logo" />
 <!--        全部目录-->
         <a-menu
@@ -11,10 +11,12 @@
             @openChange="getLocalFile"
             @click="menuClick"
             theme="light"
-            mode="inline">
+            mode="inline"
+            inline-indent:16
+            >
 
 <!--          文件目录-->
-          <a-sub-menu key="file">
+          <a-sub-menu key="file" :disabled="collapsed">
 
             <template #title>
             <span>
@@ -24,36 +26,29 @@
             </template>
 
 <!--            全部文件-->
-            <template v-for="file in fileList" :key="file.key">
-              <template v-if="!file.children">
-                  <a-menu-item :key="file.key" @contextmenu.prevent="rightClick(file.path,$event)">
-                    <span>{{file.name}}</span>
-                  </a-menu-item>
-              </template>
-
-<!--              递归搜索文件夹-->
-              <template v-else>
-                <sub-menu :key="file.key" :menu-info="file" @contextmenu.prevent="rightClick(file.path,$event)"/>
-              </template>
-            </template>
+            <sub-menu :menu-info="fileList" @rightClick="rightClick"></sub-menu>
 
           </a-sub-menu>
         </a-menu>
       </a-layout-sider>
 
 <!--      编辑器栏-->
-      <a-layout >
+      <a-layout style="margin-left: 200px">
         <a-layout-content style="margin: 0 16px" >
           <v-md-editor v-model="article.text"
                        :height="height.now"
                        left-toolbar="undo redo clear | h bold italic strikethrough quote | ul ol table hr | link image code | save"
                        class="my-v-md"
                        @save="submit()"
+
           ></v-md-editor>
         </a-layout-content>
       </a-layout>
 
     </a-layout>
+
+    <a-button type="circle" size="large" @click="getRemoteFile" style="position:fixed; bottom: 30px; right: 30px"><cloud-download-outlined /></a-button>
+    <a-button type="circle" size="large" style="position:fixed; bottom: 80px; right: 30px"><cloud-upload-outlined /></a-button>
 
 <!--    右键菜单-->
     <transition name="menu">
@@ -135,43 +130,11 @@
 
 <script>
 
-
+import SubMenu from "./components/SubMenu";
 import {reactive, ref} from 'vue'
-import {localFile, readFiles,showFile,delFiles,addFolders} from "./readFile.js";
-import { FileOutlined ,FolderOutlined,FileAddOutlined,FolderAddOutlined,DeleteOutlined,EditOutlined} from '@ant-design/icons-vue';
-const SubMenu={
-  template:`
-    <a-sub-menu :key="menuInfo.key">
-      <template #icon><folder-outlined /></template>
-      <template #title>{{menuInfo.name}}</template>
-      <template v-for="item in menuInfo.children">
-        <a-menu-item v-if="!item.children" :key="item.key" @contextmenu.prevent="rightClick(item.path)">
-          <span>{{ item.name }}</span>
-        </a-menu-item>
-        <sub-menu v-else :key="item.key+'1'" :menu-info="item" @contextmenu.prevent="rightClick(item.path)"/>
-      </template>
-    </a-sub-menu>
-  `,
-  name:'SubMenu',
-  isSubMenu:true,
-  props:{
-    menuInfo:{
-      type:Object,
-      default:()=>({})
-    }
-  },
-  components:{
-    FolderOutlined,
-  },
-  setup(){
-    function rightClick(filePath){
-      console.log("右键",filePath)
-    }
-    return{
-      rightClick
-    }
-  }
-}
+import {localFile, readFiles,showFile,delFiles,addFolders,getAllFileFromServer} from "./readFile.js";
+import { FileOutlined ,FileAddOutlined,FolderAddOutlined,DeleteOutlined,EditOutlined,CloudDownloadOutlined,CloudUploadOutlined} from '@ant-design/icons-vue';
+
 
 
 export default {
@@ -182,7 +145,9 @@ export default {
     FileAddOutlined,
     FolderAddOutlined,
     DeleteOutlined,
-    EditOutlined
+    EditOutlined,
+    CloudDownloadOutlined,
+    CloudUploadOutlined
   },
 
   setup(){
@@ -190,6 +155,9 @@ export default {
     const saveConfirmFormRef=ref();
     const addFolderConfirmFormRef=ref();
     let fileList=ref()
+    function getRemoteFile(){
+      getAllFileFromServer()
+    }
     function submit(){
       saveConfirmVisible.value = true;
     }
@@ -219,27 +187,39 @@ export default {
       })
     }
     function menuClick(arg){
-      let f=0
-      for(let i=1 ;i<arg.keyPath.length;i+=1){
-        if (f.children===undefined){
-          f=fileList.value[arg.keyPath[i]]
-        }
-        else{
-          f=f.children[arg.keyPath[i]]
+      console.log(arg,arg.keyPath[1])
+      let f
+      for (let k=0;k<fileList.value.length;k+=1){
+        if (fileList.value[k].key===arg.keyPath[1]){
+          f=fileList.value[k]
         }
       }
+      console.log(f)
+      for(let i=2 ;i<arg.keyPath.length;i+=1){
+        if (f.children!==undefined){
+          for (let j=0;j<f.children.length;j+=1){
+            console.log(arg.keyPath[i],f.children[j])
+            if (arg.keyPath[i]===f.children[j].key){
+              f=f.children[j]
+              break
+            }
+          }
+        }
+      }
+      console.log(f)
       showFile(f.path).then(function(r){
         shownFile.value=f.path
         article.text=r
         selectedKeys.value=[arg.key]
       })
+      formState.filename=f.path
     }
-    function rightClick(filePath,e){
-      menuStyle.left=e.pageX+"px"
-      menuStyle.top=e.pageY+"px"
+    function rightClick(x,y,filePath){
+      menuStyle.left=x
+      menuStyle.top=y
       menuVisible.value=true
       selectedFile.value=filePath
-      console.log("右键",filePath,e)
+      console.log("右键father",x,y,filePath)
     }
     const article = reactive({
       text:''
@@ -327,6 +307,8 @@ export default {
       "box-shadow":"2px 2px 5px 2px rgba(0,0,0,0.2)"
     })
     let menuVisible=ref(false)
+    let collapsed= ref(false)
+
 
 
 
@@ -334,7 +316,7 @@ export default {
     return {
       article,
       submit,
-      collapsed: ref(false),
+      collapsed,
       selectedKeys,
       height,
       saveConfirmVisible,
@@ -362,6 +344,7 @@ export default {
       addFolderConfirm,
       addFolderConfirmFormRef,
       addFolderFormState,
+      getRemoteFile
     }
   }
 }

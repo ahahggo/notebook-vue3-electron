@@ -41,7 +41,6 @@ async function createWindow() {
   ipcMain.on("local",async function (event, args){
     let k = 0
     async function readContent(path) {
-
       let filename=[]
       let dir = await fs.promises.opendir(path);
       for await (let dirent of dir) {
@@ -52,6 +51,7 @@ async function createWindow() {
             path:path+"/"+dirent.name,
             children:await readContent(path+"/"+dirent.name)
           })
+          k+=1
         }
         else{
           filename.push({
@@ -59,9 +59,11 @@ async function createWindow() {
             name:dirent.name,
             path:path+"/"+dirent.name,
             children:null
+
           })
+          k+=1
         }
-        k+=1
+
       }
       return filename
     }
