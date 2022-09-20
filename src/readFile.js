@@ -1,7 +1,7 @@
 const {ipcRenderer} = require('electron');
 import axios from 'axios'
 const service = axios.create({
-    baseURL: 'http://47.99.165.165:6002', // 所有的请求地址前缀部分
+    baseURL: 'your add', // 所有的请求地址前缀部分
     //baseURL: 'http://127.0.0.1:6001',
     timeout: 600, // 请求超时时间毫秒
     withCredentials: true, // 异步请求携带cookie
@@ -23,6 +23,21 @@ export function getAllFileFromServer(){
         data:{msg:'hello server'}
     }).then(function (res){
         console.log(res)
+    })
+}
+export function uploadAllFileToServer(){
+    let n=0
+    ipcRenderer.send('upload')
+    ipcRenderer.once('uploadData',function (event,data) {
+        console.log('send',n)
+        n+=1
+        service({
+            url:'/uploadAllFile',
+            method:'post',
+            data:data
+        }).then(function (res){
+            console.log(res,data)
+        })
     })
 
 }

@@ -19,6 +19,7 @@ npm run electron:build
 ```
 npm run lint
 ```
-
+![img.png](img.png)
+自由编写markdown文件
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).

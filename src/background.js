@@ -63,7 +63,6 @@ async function createWindow() {
           })
           k+=1
         }
-
       }
       return filename
     }
@@ -82,6 +81,62 @@ async function createWindow() {
         win.webContents.send("sendfile",data)
       }
     })
+  })
+
+  ipcMain.on('upload',async function () {
+    console.log('upload\n')
+
+    let filename=[]
+    let directoryName=[]
+    async function readContent(path) {
+
+      let dir = await fs.promises.opendir(path);
+      for await (let dirent of dir) {
+        if (dirent.isDirectory()){
+          directoryName.push({
+            name:path+"/"+dirent.name,
+            //children:
+          })
+          await readContent(path+"/"+dirent.name)
+        }
+        else{
+          if(dirent.name==='change.log'){
+            continue
+          }
+          filename.push({
+            name:dirent.name,
+            content:(await fs.promises.readFile(path + "/" + dirent.name)).toString(),
+          })
+        }
+      }
+      return {filename, directoryName}
+    }
+
+    let all=await readContent('./data').catch(reason => {console.log(reason)})
+    let changeTable={}
+    fs.readFile('./data/change.log', 'utf8', (err, data) => {
+      if (err) {
+        console.log('读取失败');
+        for (let file in all.filename){
+          changeTable[all.filename[file].name]=1
+        }
+        console.log(changeTable)
+        fs.writeFile('./data/change.log',JSON.stringify(changeTable),(err)=>{
+          console.log(err)
+        })
+      }
+      else {
+        changeTable=JSON.parse(data)
+        console.log(data);
+      }
+
+      all.changeTable=changeTable
+      console.log('send')
+
+      win.webContents.send('uploadData',all)
+    })
+
+
   })
 }
 

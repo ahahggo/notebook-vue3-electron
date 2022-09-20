@@ -3,7 +3,7 @@
     <a-layout style="min-height: 100vh" has-sider>
 
 <!--      侧边栏-->
-      <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light" :style="{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0 }">
+      <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light" :style="{ overflow: 'auto', height: '100vh'}">
         <div class="logo" />
 <!--        全部目录-->
         <a-menu
@@ -12,7 +12,7 @@
             @click="menuClick"
             theme="light"
             mode="inline"
-            inline-indent:16
+            :inlineIndent="16"
             >
 
 <!--          文件目录-->
@@ -33,7 +33,7 @@
       </a-layout-sider>
 
 <!--      编辑器栏-->
-      <a-layout style="margin-left: 200px">
+      <a-layout >
         <a-layout-content style="margin: 0 16px" >
           <v-md-editor v-model="article.text"
                        :height="height.now"
@@ -47,8 +47,9 @@
 
     </a-layout>
 
+<!--    上传下载按钮-->
     <a-button type="circle" size="large" @click="getRemoteFile" style="position:fixed; bottom: 30px; right: 30px"><cloud-download-outlined /></a-button>
-    <a-button type="circle" size="large" style="position:fixed; bottom: 80px; right: 30px"><cloud-upload-outlined /></a-button>
+    <a-button type="circle" size="large" @click="uploadLocalFile" style="position:fixed; bottom: 80px; right: 30px"><cloud-upload-outlined /></a-button>
 
 <!--    右键菜单-->
     <transition name="menu">
@@ -132,7 +133,7 @@
 
 import SubMenu from "./components/SubMenu";
 import {reactive, ref} from 'vue'
-import {localFile, readFiles,showFile,delFiles,addFolders,getAllFileFromServer} from "./readFile.js";
+import {localFile, readFiles,showFile,delFiles,addFolders,getAllFileFromServer,uploadAllFileToServer} from "./readFile.js";
 import { FileOutlined ,FileAddOutlined,FolderAddOutlined,DeleteOutlined,EditOutlined,CloudDownloadOutlined,CloudUploadOutlined} from '@ant-design/icons-vue';
 
 
@@ -157,6 +158,9 @@ export default {
     let fileList=ref()
     function getRemoteFile(){
       getAllFileFromServer()
+    }
+    function uploadLocalFile(){
+      uploadAllFileToServer()
     }
     function submit(){
       saveConfirmVisible.value = true;
@@ -212,7 +216,7 @@ export default {
         article.text=r
         selectedKeys.value=[arg.key]
       })
-      formState.filename=f.path
+      formState.filename=f.name.slice(0,-3)
     }
     function rightClick(x,y,filePath){
       menuStyle.left=x
@@ -344,7 +348,8 @@ export default {
       addFolderConfirm,
       addFolderConfirmFormRef,
       addFolderFormState,
-      getRemoteFile
+      getRemoteFile,
+      uploadLocalFile
     }
   }
 }
